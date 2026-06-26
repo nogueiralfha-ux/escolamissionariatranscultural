@@ -1,0 +1,75 @@
+{
+  "entities": {
+    "waitlistEntry": {
+      "title": "Waitlist Entry",
+      "description": "An entry in the devotional app waitlist.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Email address of the user"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user joined the waitlist"
+        }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "enrollment": {
+      "title": "Enrollment",
+      "description": "A student enrollment form submission.",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "birthDate": { "type": "string" },
+        "maritalStatus": { "type": "string" },
+        "profession": { "type": "string" },
+        "country": { "type": "string" },
+        "state": { "type": "string" },
+        "city": { "type": "string" },
+        "churchName": { "type": "string" },
+        "conversionTime": { "type": "string" },
+        "churchRole": { "type": "string" },
+        "pastorName": { "type": "string" },
+        "pastorPhone": { "type": "string" },
+        "testimony": { "type": "string" },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["fullName", "email", "phone", "birthDate", "country", "state", "city", "churchName", "conversionTime", "churchRole", "pastorName", "pastorPhone", "reason", "createdAt", "status"]
+    },
+    "product": {
+      "title": "Product",
+      "description": "A product available in the missionary shop.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "price": { "type": "string" },
+        "numericPrice": { "type": "number" },
+        "image": { "type": "string" },
+        "iconName": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "type", "price", "numericPrice", "image", "iconName", "createdAt"]
+    }
+  },
+  "firestore": {
+    "waitlist": {
+      "schema": { "$ref": "#/entities/waitlistEntry" },
+      "description": "Collection storing waitlist emails."
+    },
+    "enrollments": {
+      "schema": { "$ref": "#/entities/enrollment" },
+      "description": "Collection storing enrollment form submissions."
+    },
+    "products": {
+      "schema": { "$ref": "#/entities/product" },
+      "description": "Collection storing shop products."
+    }
+  }
+}

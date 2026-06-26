@@ -1,0 +1,81 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Primitives
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && request.auth.token.email == 'nogueiralfha@gmail.com'; }
+    
+    // Students Validation
+    match /students/{studentId} {
+      allow read, write: if isSignedIn() && request.auth.uid == studentId;
+    }
+
+    // Products Validation
+    function isValidProduct(data) {
+      return data.title is string
+        && data.price is string
+        && data.numericPrice is number;
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /curriculum/{moduleId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Waitlist Validation
+    function isValidWaitlistEntry(data) {
+      return data.keys().hasAll(['email', 'createdAt']) 
+        && data.keys().size() == 2
+        && data.email is string 
+        && data.email.size() >= 3 
+        && data.email.size() <= 100
+        && data.createdAt == request.time;
+    }
+    
+    match /waitlist/{entryId} {
+      allow create: if isValidId(entryId) && isValidWaitlistEntry(incoming());
+      // No read access for public
+    }
+    
+    function isValidEnrollment(data) {
+      return data.keys().hasAll(['fullName', 'email', 'phone', 'birthDate', 'maritalStatus', 'profession', 'country', 'state', 'city', 'churchName', 'conversionTime', 'churchRole', 'pastorName', 'pastorPhone', 'testimony', 'reason', 'createdAt', 'status'])
+        && data.keys().size() == 18
+        && data.fullName is string && data.fullName.size() <= 150
+        && data.email is string && data.email.size() <= 100
+        && data.phone is string && data.phone.size() <= 30
+        && data.birthDate is string && data.birthDate.size() <= 20
+        && data.maritalStatus is string && data.maritalStatus.size() <= 30
+        && data.profession is string && data.profession.size() <= 100
+        && data.country is string && data.country.size() <= 100
+        && data.state is string && data.state.size() <= 100
+        && data.city is string && data.city.size() <= 100
+        && data.churchName is string && data.churchName.size() <= 150
+        && data.conversionTime is string && data.conversionTime.size() <= 50
+        && data.churchRole is string && data.churchRole.size() <= 100
+        && data.pastorName is string && data.pastorName.size() <= 100
+        && data.pastorPhone is string && data.pastorPhone.size() <= 30
+        && data.testimony is string && data.testimony.size() <= 2000
+        && data.reason is string && data.reason.size() <= 2000
+        && data.status == 'pending'
+        && data.createdAt == request.time;
+    }
+
+    match /enrollments/{enrollmentId} {
+      allow create: if isValidId(enrollmentId) && isValidEnrollment(incoming());
+    }
+  }
+}
