@@ -68,6 +68,14 @@ export function Resources() {
   const [resources, setResources] = useState<ResourceItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Lead capture states
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [selectedResource, setSelectedResource] = useState<ResourceItem | null>(null);
+  const [leadName, setLeadName] = useState(() => localStorage.getItem('lead_name') || '');
+  const [leadEmail, setLeadEmail] = useState(() => localStorage.getItem('lead_email') || '');
+  const [leadPhone, setLeadPhone] = useState(() => localStorage.getItem('lead_phone') || '');
+  const [submittingLead, setSubmittingLead] = useState(false);
+
   useEffect(() => {
     async function loadResources() {
       try {
@@ -91,6 +99,57 @@ export function Resources() {
     }
     loadResources();
   }, []);
+
+  const handleDownloadClick = (e: React.MouseEvent, item: ResourceItem) => {
+    // Check if the action is actually a free download
+    const actionTextLower = item.actionText.toLowerCase();
+    const isFreeDownload = actionTextLower.includes('baixar') || actionTextLower.includes('download') || actionTextLower.includes('grátis') || actionTextLower.includes('gratis');
+
+    if (isFreeDownload) {
+      e.preventDefault();
+      
+      const leadCaptured = localStorage.getItem('lead_captured') === 'true';
+      if (leadCaptured) {
+        window.open(item.link, '_blank');
+      } else {
+        setSelectedResource(item);
+        setShowLeadModal(true);
+      }
+    }
+  };
+
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadName || !leadEmail || !leadPhone || !selectedResource) return;
+
+    setSubmittingLead(true);
+    try {
+      const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+      await addDoc(collection(db, 'leads'), {
+        name: leadName,
+        email: leadEmail,
+        phone: leadPhone,
+        resourceId: selectedResource.id,
+        resourceTitle: selectedResource.title,
+        createdAt: serverTimestamp()
+      });
+
+      localStorage.setItem('lead_captured', 'true');
+      localStorage.setItem('lead_name', leadName);
+      localStorage.setItem('lead_email', leadEmail);
+      localStorage.setItem('lead_phone', leadPhone);
+
+      setShowLeadModal(false);
+      window.open(selectedResource.link, '_blank');
+    } catch (err) {
+      console.error("Erro ao salvar lead de download:", err);
+      // Fallback: still open link
+      setShowLeadModal(false);
+      window.open(selectedResource.link, '_blank');
+    } finally {
+      setSubmittingLead(false);
+    }
+  };
 
   // Group resources by category
   const categoriesMap: { [key: string]: ResourceItem[] } = {};
@@ -201,7 +260,8 @@ export function Resources() {
                             href={item.link} 
                             target="_blank" 
                             rel="noopener noreferrer" 
-                            className="inline-flex items-center gap-2 font-bold text-mission-orange hover:text-mission-orange-dark transition-colors self-start group"
+                            onClick={(e) => handleDownloadClick(e, item)}
+                            className="inline-flex items-center gap-2 font-bold text-mission-orange hover:text-mission-orange-dark transition-colors self-start group cursor-pointer"
                           >
                             <ActionIcon className="w-5 h-5" />
                             {item.actionText}
@@ -209,7 +269,8 @@ export function Resources() {
                         ) : (
                           <Link 
                             to={item.link} 
-                            className="inline-flex items-center gap-2 font-bold text-mission-orange hover:text-mission-orange-dark transition-colors self-start group"
+                            onClick={(e) => handleDownloadClick(e, item)}
+                            className="inline-flex items-center gap-2 font-bold text-mission-orange hover:text-mission-orange-dark transition-colors self-start group cursor-pointer"
                           >
                             <ActionIcon className="w-5 h-5" />
                             {item.actionText}
@@ -242,6 +303,85 @@ export function Resources() {
          </div>
 
       </div>
+
+      {/* Lead Capture Modal */}
+      {showLeadModal && selectedResource && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl border border-slate-100 text-left relative overflow-hidden"
+          >
+            <button 
+              onClick={() => setShowLeadModal(false)}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Libere seu Download</h3>
+            <p className="text-sm text-slate-500 mb-6 font-medium">
+              Para fazer o download gratuito de <span className="text-mission-orange font-bold">"{selectedResource.title}"</span>, preencha os dados abaixo para receber o link de acesso imediato.
+            </p>
+
+            <form onSubmit={handleLeadSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Nome Completo</label>
+                <input 
+                  type="text" 
+                  required
+                  value={leadName}
+                  onChange={(e) => setLeadName(e.target.value)}
+                  placeholder="Seu nome completo"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-mission-orange focus:ring-2 focus:ring-mission-orange/20 outline-none text-sm transition-all text-slate-950 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-2">E-mail</label>
+                <input 
+                  type="email" 
+                  required
+                  value={leadEmail}
+                  onChange={(e) => setLeadEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-mission-orange focus:ring-2 focus:ring-mission-orange/20 outline-none text-sm transition-all text-slate-950 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-2">WhatsApp / Celular</label>
+                <input 
+                  type="tel" 
+                  required
+                  value={leadPhone}
+                  onChange={(e) => setLeadPhone(e.target.value)}
+                  placeholder="Ex: 11999999999"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-mission-orange focus:ring-2 focus:ring-mission-orange/20 outline-none text-sm transition-all text-slate-950 font-medium"
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={submittingLead}
+                className="w-full bg-mission-orange hover:bg-orange-600 disabled:bg-orange-300 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg hover:shadow-xl mt-6 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {submittingLead ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" /> Salvando dados...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-5 h-5" /> Baixar Agora
+                  </>
+                )}
+              </button>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
