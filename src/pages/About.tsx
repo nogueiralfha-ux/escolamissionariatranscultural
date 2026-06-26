@@ -1,8 +1,65 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Globe, Target, Heart, Shield, BookOpen, ArrowRight } from 'lucide-react';
+import { Globe, Target, Heart, Shield, BookOpen, ArrowRight, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { db } from '../lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+
+interface TeacherItem {
+  id: string;
+  name: string;
+  subject: string;
+  bio: string;
+  image: string;
+  order: number;
+}
+
+const DEFAULT_TEACHERS: TeacherItem[] = [
+  {
+    id: "default_1",
+    name: "Pr. Alexandre Nogueira",
+    subject: "Teologia Missiológica & Plantação de Igrejas",
+    bio: "Mais de 15 anos de experiência prática e pastoral em campos nacionais e transculturais. Fundador e coordenador da Escola Missionária.",
+    image: "https://i.ibb.co/8Lq8yfn6/logo-para-facebook.png",
+    order: 0
+  },
+  {
+    id: "default_2",
+    name: "Prof. Marcos Souza",
+    subject: "Inteligência Cultural & Antropologia",
+    bio: "Doutor em Ciências da Religião, com foco em comunicação transcultural e análise de cosmovisões de povos minoritários.",
+    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80",
+    order: 1
+  }
+];
 
 export function About() {
+  const [teachers, setTeachers] = useState<TeacherItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadTeachers() {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'teachers'));
+        const list: TeacherItem[] = [];
+        querySnapshot.forEach((doc) => {
+          list.push({ id: doc.id, ...doc.data() } as TeacherItem);
+        });
+        if (list.length > 0) {
+          list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+          setTeachers(list);
+        } else {
+          setTeachers(DEFAULT_TEACHERS);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar professores, usando padrão:", error);
+        setTeachers(DEFAULT_TEACHERS);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadTeachers();
+  }, []);
   return (
     <div className="min-h-screen bg-slate-50 pt-24 pb-20">
       {/* Hero Section */}
@@ -105,6 +162,45 @@ export function About() {
               <h3 className="text-xl font-bold text-slate-900 mb-3">Compaixão em Ação</h3>
               <p className="text-slate-600 leading-relaxed">Missões trata sobre amar através da ação. Ensinamos a aliar a pregação vibrante com o cuidado social contínuo àqueles que mais necessitam.</p>
             </div>
+          </div>
+        </div>
+        {/* Corpo Docente */}
+        <div className="mb-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">Nosso Corpo Docente</h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Aprenda com missionários e professores experientes que vivem o que ensinam no dia a dia do campo.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-8">
+            {teachers.map((teacher, index) => (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                key={teacher.id || index}
+                className="bg-white rounded-[2rem] p-6 md:p-8 shadow-lg border border-slate-100 flex flex-col sm:flex-row gap-6 items-start hover:shadow-xl hover:border-mission-orange/20 transition-all"
+              >
+                <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-100 border border-slate-200">
+                  <img
+                    src={teacher.image}
+                    alt={teacher.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-slate-900 mb-1">{teacher.name}</h3>
+                  <div className="text-xs font-bold uppercase tracking-wider text-mission-orange mb-3">
+                    {teacher.subject}
+                  </div>
+                  <p className="text-slate-600 text-sm leading-relaxed">
+                    {teacher.bio}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
 
