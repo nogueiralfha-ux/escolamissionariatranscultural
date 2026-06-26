@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
-import { Search, MapPin, Users, Activity, Target, ArrowRight, HeartPulse, Globe2 } from 'lucide-react';
+import { Search, MapPin, Users, Activity, Target, ArrowRight, HeartPulse, Globe2, ZoomIn, ZoomOut } from 'lucide-react';
+import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
+
+const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY || import.meta.env.VITE_GOOGLE_MAPS_PLATFORM_KEY || '';
@@ -50,6 +53,21 @@ export function Atlas() {
   const [activeGroup, setActiveGroup] = useState<typeof unreachedGroups[0] | null>(null);
   const [groups, setGroups] = useState(unreachedGroups);
   const [isSearching, setIsSearching] = useState(false);
+  const [position, setPosition] = useState({ coordinates: [0, 10] as [number, number], zoom: 1 });
+
+  function handleZoomIn() {
+    if (position.zoom >= 8) return;
+    setPosition((pos) => ({ ...pos, zoom: pos.zoom * 1.5 }));
+  }
+
+  function handleZoomOut() {
+    if (position.zoom <= 1) return;
+    setPosition((pos) => ({ ...pos, zoom: pos.zoom / 1.5 }));
+  }
+
+  function handleMoveEnd(newPosition: { coordinates: [number, number]; zoom: number }) {
+    setPosition(newPosition);
+  }
 
   const fetchDynamicGroups = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,10 +158,90 @@ export function Atlas() {
             style={{ height: '600px' }}
           >
             {!hasValidKey ? (
-              <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontFamily:'sans-serif'}}>
-                <div style={{textAlign:'center',maxWidth:520}} className="p-8">
-                  <h2 className="text-xl font-bold mb-4">API do Google Maps Necessária</h2>
-                  <p className="mb-2 text-sm text-slate-600">Por favor, configure sua chave do Google Maps para visualizar o atlas interativo.</p>
+              <div className="relative w-full h-full bg-slate-950 overflow-hidden">
+                <ComposableMap
+                  projectionConfig={{ rotate: [-10, 0, 0], scale: 140 }}
+                  style={{ width: "100%", height: "100%" }}
+                >
+                  <ZoomableGroup
+                    zoom={position.zoom}
+                    center={position.coordinates}
+                    onMoveEnd={handleMoveEnd}
+                  >
+                    <Geographies geography={geoUrl}>
+                      {({ geographies }) =>
+                        geographies.map((geo) => {
+                          return (
+                            <Geography
+                              key={geo.rsmKey}
+                              geography={geo}
+                              fill="#1e293b"
+                              stroke="#334155"
+                              strokeWidth={0.5}
+                              style={{
+                                default: { fill: "#0f172a", outline: "none" },
+                                hover: { fill: "#1e293b", outline: "none" },
+                                pressed: { fill: "#020617", outline: "none" },
+                              }}
+                            />
+                          );
+                        })
+                      }
+                    </Geographies>
+
+                    {groups.map((group, index) => {
+                      const isActive = activeGroup?.id === group.id;
+                      const pinColor = isActive ? "#ea580c" : (group.urgent ? "#ef4444" : "#f97316");
+                      return (
+                        <Marker
+                          key={group.id || index}
+                          coordinates={group.coordinates as [number, number]}
+                          onClick={() => setActiveGroup(group as any)}
+                        >
+                          <circle
+                            r={isActive ? 7 : 4}
+                            fill={pinColor}
+                            stroke="#ffffff"
+                            strokeWidth={1.5}
+                            className="cursor-pointer transition-all duration-300 hover:scale-125"
+                          />
+                          {isActive && (
+                            <circle
+                              r={12}
+                              fill="none"
+                              stroke={pinColor}
+                              strokeWidth={1.5}
+                              className="animate-ping"
+                              style={{ pointerEvents: 'none' }}
+                            />
+                          )}
+                        </Marker>
+                      );
+                    })}
+                  </ZoomableGroup>
+                </ComposableMap>
+                
+                {/* Custom Map Zoom Controls */}
+                <div className="absolute right-6 bottom-6 flex flex-col gap-2 z-10">
+                  <button 
+                    onClick={handleZoomIn}
+                    className="w-10 h-10 bg-slate-800 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center border border-slate-700 shadow transition-colors cursor-pointer"
+                    title="Aumentar Zoom"
+                  >
+                    <ZoomIn className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={handleZoomOut}
+                    className="w-10 h-10 bg-slate-800 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center border border-slate-700 shadow transition-colors cursor-pointer"
+                    title="Diminuir Zoom"
+                  >
+                    <ZoomOut className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                {/* Floating Note */}
+                <div className="absolute top-20 right-6 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800 text-slate-400 text-xs shadow-md">
+                  <span>Modo Vetorial (Sem Chave do Google Maps)</span>
                 </div>
               </div>
             ) : (
