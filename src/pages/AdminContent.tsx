@@ -10,6 +10,9 @@ interface Module {
   desc: string;
   topics: string[];
   order: number;
+  image?: string;
+  color?: string;
+  icon?: string;
 }
 
 const DEFAULT_CURRICULUM: Omit<Module, 'id'>[] = [
@@ -17,48 +20,72 @@ const DEFAULT_CURRICULUM: Omit<Module, 'id'>[] = [
     title: "Introdução",
     desc: "Boas-vindas, visão da escola e instruções iniciais.",
     topics: ["Boas-vindas", "Visão da escola", "Instruções"],
+    image: "/modulo-intro.png",
+    color: "bg-slate-500",
+    icon: "LayoutList",
     order: 0
   },
   {
     title: "Módulo 1: Fundamentos Bíblicos",
     desc: "A base teológica e bíblica do chamado.",
     topics: ["Chamado missionário", "A Grande Comissão", "O coração de Deus", "Avivamento e missões"],
+    image: "/modulo-1.png",
+    color: "bg-mission-gold",
+    icon: "BookOpen",
     order: 1
   },
   {
     title: "Módulo 2: Identidade Missionária",
     desc: "Forjando o caráter de Cristo para sobreviver no campo.",
     topics: ["Caráter do missionário", "Santidade", "Disciplina espiritual", "Vida de oração"],
+    image: "/modulo-2.png",
+    color: "bg-mission-orange",
+    icon: "Flame",
     order: 2
   },
   {
     title: "Módulo 3: Evangelismo Transcultural",
     desc: "Entendendo os povos não alcançados.",
     topics: ["Culturas", "Adaptação", "Povos não alcançados", "Estratégias"],
+    image: "/modulo-3.png",
+    color: "bg-mission-green",
+    icon: "MapPin",
     order: 3
   },
   {
     title: "Módulo 4: Batalha Espiritual",
     desc: "Armas espirituais para avançar no Reino.",
     topics: ["Intercessão", "Jejum", "Guerra espiritual", "Libertação"],
+    image: "/modulo-4.png",
+    color: "bg-slate-800",
+    icon: "Shield",
     order: 4
   },
   {
     title: "Módulo 5: Implantação e Logística",
     desc: "Os desafios práticos de chegar e permanecer no campo.",
     topics: ["Viagens", "Suporte", "Liderança", "Sobrevivência no campo"],
+    image: "/modulo-5.png",
+    color: "bg-mission-orange-light",
+    icon: "Users",
     order: 5
   },
   {
     title: "Módulo 6: Liderança e Discipulado",
     desc: "Cuidando de si e das ovelhas.",
     topics: ["Liderança cristã", "Discipulado", "Cuidado pastoral", "Formação de líderes"],
+    image: "/modulo-6.png",
+    color: "bg-mission-green-dark",
+    icon: "Users",
     order: 6
   },
   {
     title: "Módulo 7: Projeto Final",
     desc: "Colocando em prática tudo que foi aprendido.",
     topics: ["Relatório", "Evangelismo prático", "Apresentação", "Consagração"],
+    image: "/modulo-7.png",
+    color: "bg-mission-gold-light",
+    icon: "Trophy",
     order: 7
   }
 ];
@@ -92,6 +119,29 @@ export function AdminContent() {
           const newId = `module_${i}`;
           await setDoc(doc(db, 'curriculum', newId), DEFAULT_CURRICULUM[i]);
           modulesData.push({ id: newId, ...DEFAULT_CURRICULUM[i] });
+        }
+      } else {
+        // Migration: check if existing items need image/icon/color fields
+        let updatedAny = false;
+        for (let i = 0; i < modulesData.length; i++) {
+          const mod = modulesData[i];
+          if (!mod.image) {
+            const matchedDefault = DEFAULT_CURRICULUM.find(def => def.title === mod.title || def.order === mod.order);
+            if (matchedDefault) {
+              await setDoc(doc(db, 'curriculum', mod.id), {
+                image: matchedDefault.image,
+                color: matchedDefault.color,
+                icon: matchedDefault.icon
+              }, { merge: true });
+              mod.image = matchedDefault.image;
+              mod.color = matchedDefault.color;
+              mod.icon = matchedDefault.icon;
+              updatedAny = true;
+            }
+          }
+        }
+        if (updatedAny) {
+          console.log("Curriculum database migrated with images/icons successfully!");
         }
       }
 
