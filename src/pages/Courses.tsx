@@ -94,6 +94,37 @@ export function Courses() {
         if (modulesData.length > 0) {
           modulesData.sort((a, b) => a.order - b.order);
           setModules(modulesData);
+
+          // Self-healing database check: if some documents are missing images, write them
+          let neededMigration = false;
+          for (let i = 0; i < modulesData.length; i++) {
+            if (!modulesData[i].image) {
+              neededMigration = true;
+              break;
+            }
+          }
+
+          if (neededMigration) {
+            console.log("Iniciando auto-migração de imagens do currículo...");
+            const { doc: firestoreDoc, setDoc } = await import('firebase/firestore');
+            for (let i = 0; i < modulesData.length; i++) {
+              const mod = modulesData[i];
+              if (!mod.image) {
+                const matchedDefault = curriculum.find(def => def.title === mod.title);
+                if (matchedDefault) {
+                  await setDoc(firestoreDoc(db, 'curriculum', mod.id), {
+                    image: matchedDefault.image,
+                    color: matchedDefault.color,
+                    icon: matchedDefault.icon
+                  }, { merge: true });
+                  mod.image = matchedDefault.image;
+                  mod.color = matchedDefault.color;
+                  mod.icon = matchedDefault.icon;
+                }
+              }
+            }
+            setModules([...modulesData]);
+          }
         }
       } catch (err) {
         console.error("Erro ao carregar grade do Firestore, usando fallback:", err);

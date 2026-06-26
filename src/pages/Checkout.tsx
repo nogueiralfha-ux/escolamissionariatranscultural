@@ -66,7 +66,23 @@ export function Checkout() {
         const querySnapshot = await getDocs(collection(db, 'products'));
         const productsData: Product[] = [];
         querySnapshot.forEach((doc) => {
-          productsData.push({ id: doc.id, ...doc.data() } as Product);
+          const data = doc.data();
+          const price = data.price || '';
+          const cleanedPrice = price.replace(/[^\d,.]/g, '').replace(',', '.');
+          const numericPrice = data.numericPrice !== undefined ? data.numericPrice : (parseFloat(cleanedPrice) || 0);
+
+          productsData.push({
+            id: doc.id,
+            title: data.title || data.name || 'Produto',
+            type: data.type || data.tag || 'Literatura',
+            price: price,
+            numericPrice: numericPrice,
+            image: data.image || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80',
+            iconName: data.iconName || (data.tag?.toLowerCase().includes('camiseta') ? 'Shirt' : 'Book'),
+            billingType: data.billingType || 'fixed',
+            priceAnnual: data.priceAnnual,
+            numericPriceAnnual: data.numericPriceAnnual
+          } as Product);
         });
         setProducts(productsData);
 
