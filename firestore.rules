@@ -2,65 +2,109 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Primitives
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    
     // Helper para verificar se o usuário é administrador
     function isAdmin() {
-      return request.auth != null && 
-        (request.auth.token.email == 'nogueiralfha@gmail.com' || 
-         request.auth.token.email == 'contato@escolamissionaria.com.br' || 
-         request.auth.token.email == 'coordenacao@escolamissionaria.com.br');
+      return isSignedIn() && (
+        request.auth.token.email == 'nogueiralfha@gmail.com' ||
+        request.auth.token.email == 'contato@escolamissionaria.com.br' ||
+        request.auth.token.email == 'coordenacao@escolamissionaria.com.br'
+      );
+    }
+    
+    // Students Validation
+    match /students/{studentId} {
+      allow read, write: if isSignedIn() && request.auth.uid == studentId;
     }
 
-    // Regras para leads (captura de contatos)
-    match /leads/{leadId} {
-      allow create: if true; // Qualquer um pode baixar material e gerar lead
-      allow read, update, delete: if isAdmin();
+    // Products Validation
+    function isValidProduct(data) {
+      return data.title is string
+        && data.price is string
+        && data.numericPrice is number;
     }
 
-    // Regras para professores
-    match /teachers/{teacherId} {
-      allow read: if true; // Visível publicamente na página Quem Somos
-      allow write: if isAdmin();
-    }
-
-    // Regras para materiais de apoio exclusivos de alunos
-    match /student_materials/{materialId} {
-      allow read: if true; // Aberto para leitura para evitar erros de autenticação do admin
-      allow write: if isAdmin(); // Apenas administradores podem gerenciar
-    }
-
-    // Regras para produtos / loja
     match /products/{productId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Regras para posts do blog / devocionais
-    match /posts/{postId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Regras para depoimentos
-    match /testimonials/{testimonialId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Regras para as aulas / grade curricular
     match /curriculum/{moduleId} {
-      allow read: if true; // Para exibir a grade
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Regras para as matrículas / usuários
-    match /users/{userId} {
-      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    match /resources/{resourceId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
-    // Regras para inscrições e pagamentos (historico)
-    match /enrollments/{enrollmentId} {
+    match /teachers/{teacherId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /leads/{leadId} {
       allow create: if true;
-      allow read, update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+      allow read: if isAdmin();
+    }
+
+    match /student_materials/{materialId} {
+      allow read: if true; // Permite alunos lerem
+      allow write: if isAdmin();
+    }
+    
+    // Waitlist Validation
+    function isValidWaitlistEntry(data) {
+      return data.keys().hasAll(['email', 'createdAt']) 
+        && data.keys().size() == 2
+        && data.email is string 
+        && data.email.size() >= 3 
+        && data.email.size() <= 100
+        && data.createdAt == request.time;
+    }
+    
+    match /waitlist/{entryId} {
+      allow create: if isValidId(entryId) && isValidWaitlistEntry(incoming());
+      allow read: if isAdmin();
+    }
+    
+    function isValidEnrollment(data) {
+      return data.keys().hasAll(['fullName', 'email', 'phone', 'birthDate', 'maritalStatus', 'profession', 'country', 'state', 'city', 'churchName', 'conversionTime', 'churchRole', 'pastorName', 'pastorPhone', 'testimony', 'reason', 'createdAt', 'status'])
+        && data.keys().size() == 18
+        && data.fullName is string && data.fullName.size() <= 150
+        && data.email is string && data.email.size() <= 100
+        && data.phone is string && data.phone.size() <= 30
+        && data.birthDate is string && data.birthDate.size() <= 20
+        && data.maritalStatus is string && data.maritalStatus.size() <= 30
+        && data.profession is string && data.profession.size() <= 100
+        && data.country is string && data.country.size() <= 100
+        && data.state is string && data.state.size() <= 100
+        && data.city is string && data.city.size() <= 100
+        && data.churchName is string && data.churchName.size() <= 150
+        && data.conversionTime is string && data.conversionTime.size() <= 50
+        && data.churchRole is string && data.churchRole.size() <= 100
+        && data.pastorName is string && data.pastorName.size() <= 100
+        && data.pastorPhone is string && data.pastorPhone.size() <= 30
+        && data.testimony is string && data.testimony.size() <= 2000
+        && data.reason is string && data.reason.size() <= 2000
+        && data.status == 'pending'
+        && data.createdAt == request.time;
+    }
+
+    match /enrollments/{enrollmentId} {
+      allow create: if isValidId(enrollmentId) && isValidEnrollment(incoming());
+      allow read, update: if isSignedIn() && (request.auth.uid == resource.data.userId || isAdmin());
     }
   }
 }
