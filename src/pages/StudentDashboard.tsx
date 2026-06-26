@@ -34,6 +34,27 @@ export function StudentDashboard() {
     { id: '7', title: "Módulo 7: Projeto Final", topics: ["1", "2", "3", "4"] },
   ]);
 
+  const [showMaterialsModal, setShowMaterialsModal] = useState(false);
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
+
+  const loadMaterials = async () => {
+    setLoadingMaterials(true);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'student_materials'));
+      const list: any[] = [];
+      querySnapshot.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() });
+      });
+      list.sort((a, b) => a.order - b.order);
+      setMaterials(list);
+    } catch (err) {
+      console.error("Erro ao carregar materiais de apoio:", err);
+    } finally {
+      setLoadingMaterials(false);
+    }
+  };
+
   useEffect(() => {
     async function loadCurriculum() {
       try {
@@ -177,7 +198,13 @@ export function StudentDashboard() {
               <Calendar className="w-6 h-6" />
               <span className="text-sm font-medium">Agenda</span>
             </button>
-            <button className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-mission-orange/30 hover:bg-orange-50 transition-colors gap-2 text-slate-700 hover:text-mission-orange">
+            <button 
+              onClick={() => {
+                loadMaterials();
+                setShowMaterialsModal(true);
+              }}
+              className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-mission-orange/30 hover:bg-orange-50 transition-colors gap-2 text-slate-700 hover:text-mission-orange"
+            >
               <FileText className="w-6 h-6" />
               <span className="text-sm font-medium">Biblioteca PDF</span>
             </button>
@@ -212,7 +239,6 @@ export function StudentDashboard() {
           </div>
 
         </div>
-
       </div>
 
       <AnimatePresence>
@@ -363,6 +389,84 @@ export function StudentDashboard() {
                   >
                     <Printer className="w-5 h-5"/> Imprimir / Salvar PDF
                   </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showMaterialsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setShowMaterialsModal(false)}
+                className="absolute top-4 right-4 z-20 w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full flex items-center justify-center transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="p-6 md:p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-mission-orange/10 flex items-center justify-center text-mission-orange">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">Biblioteca do Aluno</h2>
+                    <p className="text-slate-500 text-sm">Acesse e faça download dos materiais de apoio exclusivos das aulas.</p>
+                  </div>
+                </div>
+
+                <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-2">
+                  {loadingMaterials ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-slate-500 gap-3">
+                      <div className="animate-spin rounded-full h-8 w-8 border-4 border-mission-orange border-t-transparent"></div>
+                      <p>Carregando materiais...</p>
+                    </div>
+                  ) : materials.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500">
+                      <p className="font-medium">Nenhum material de apoio disponível no momento.</p>
+                      <p className="text-sm text-slate-400 mt-1">Os coordenadores publicarão os materiais em breve.</p>
+                    </div>
+                  ) : (
+                    materials.map((item) => (
+                      <div 
+                        key={item.id} 
+                        className="p-5 border border-slate-150 rounded-2xl bg-slate-50 hover:bg-slate-100/50 hover:border-mission-orange/20 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-mission-orange uppercase tracking-wider bg-orange-100 text-mission-orange px-2 py-0.5 rounded-md">
+                              {item.module || 'Geral'}
+                            </span>
+                          </div>
+                          <h4 className="font-bold text-slate-800 text-base">{item.title}</h4>
+                          <p className="text-slate-500 text-sm leading-relaxed">{item.desc}</p>
+                        </div>
+                        <a 
+                          href={item.link} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="shrink-0 flex items-center justify-center gap-2 bg-mission-orange hover:bg-orange-700 text-white font-bold text-sm px-5 py-3 rounded-xl transition-all shadow-sm"
+                        >
+                          <Download className="w-4 h-4" /> Download PDF
+                        </a>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button 
+                  onClick={() => setShowMaterialsModal(false)}
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-6 py-2.5 rounded-xl font-bold transition-colors"
+                >
+                  Fechar
+                </button>
               </div>
             </motion.div>
           </div>

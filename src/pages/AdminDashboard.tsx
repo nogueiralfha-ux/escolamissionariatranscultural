@@ -8,6 +8,7 @@ import { AdminContent } from './AdminContent';
 import { AdminResources } from './AdminResources';
 import { AdminTeachers } from './AdminTeachers';
 import { AdminLeads } from './AdminLeads';
+import { AdminStudentMaterials } from './AdminStudentMaterials';
 
 const MOCK_STUDENTS = [
   { id: 1, name: 'João Silva', email: 'joao.silva@email.com', progress: 32, status: 'Ativo', lastActive: 'Hoje', enrolledDate: '10/01/2026' },
@@ -40,7 +41,7 @@ function Activity({ className }: { className?: string }) {
 
 export function AdminDashboard() {
   const { user, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'exams' | 'content' | 'products' | 'resources' | 'teachers' | 'leads'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'exams' | 'content' | 'products' | 'resources' | 'teachers' | 'leads' | 'student_materials'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
 
   if (loading) {
@@ -85,7 +86,7 @@ export function AdminDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Navigation Tabs */}
         <div className="flex space-x-2 border-b border-slate-200 mb-8 overflow-x-auto pb-px">
-          {['overview', 'students', 'exams', 'content', 'products', 'resources', 'teachers', 'leads'].map((tab) => (
+          {['overview', 'students', 'exams', 'content', 'products', 'resources', 'teachers', 'leads', 'student_materials'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -103,6 +104,7 @@ export function AdminDashboard() {
               {tab === 'resources' && 'Recursos & Novidades'}
               {tab === 'teachers' && 'Corpo Docente'}
               {tab === 'leads' && 'Contatos Capturados (Leads)'}
+              {tab === 'student_materials' && 'Materiais dos Alunos'}
             </button>
           ))}
         </div>
@@ -311,6 +313,12 @@ export function AdminDashboard() {
         {activeTab === 'leads' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <AdminLeads />
+          </motion.div>
+        )}
+
+        {activeTab === 'student_materials' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <AdminStudentMaterials />
           </motion.div>
         )}
       </div>

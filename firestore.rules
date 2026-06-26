@@ -50,6 +50,11 @@ service cloud.firestore {
       allow create: if true;
       allow read: if true;
     }
+
+    match /student_materials/{materialId} {
+      allow read: if true;
+      allow write: if true;
+    }
     
     // Waitlist Validation
     function isValidWaitlistEntry(data) {
