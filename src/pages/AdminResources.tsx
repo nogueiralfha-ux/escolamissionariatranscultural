@@ -60,6 +60,7 @@ const DEFAULT_RESOURCES: Omit<ResourceItem, 'id'>[] = [
 
 export function AdminResources() {
   const [resources, setResources] = useState<ResourceItem[]>([]);
+  const [storeProducts, setStoreProducts] = useState<{ id: string; title: string; price: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -83,6 +84,23 @@ export function AdminResources() {
       querySnapshot.forEach((doc) => {
         resourcesData.push({ id: doc.id, ...doc.data() } as ResourceItem);
       });
+
+      // Fetch products to link with
+      try {
+        const prodSnapshot = await getDocs(collection(db, 'products'));
+        const prodsList: any[] = [];
+        prodSnapshot.forEach((doc) => {
+          const data = doc.data();
+          prodsList.push({
+            id: doc.id,
+            title: data.title || data.name || 'Produto',
+            price: data.price || 'R$ 0,00'
+          });
+        });
+        setStoreProducts(prodsList);
+      } catch (prodErr) {
+        console.error("Erro ao carregar produtos na gestão de recursos", prodErr);
+      }
 
       // Seed if empty
       if (resourcesData.length === 0) {
@@ -271,7 +289,28 @@ export function AdminResources() {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Link de Acesso (URL externa ou arquivo PDF)</label>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Vincular a um Produto da Loja (Opcional)</label>
+              <select
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val) {
+                    setLink(`/checkout?product=${val}`);
+                    setActionText('Adquirir');
+                  }
+                }}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:border-mission-orange outline-none text-sm bg-white"
+                value={link.startsWith('/checkout?product=') ? link.replace('/checkout?product=', '') : ''}
+              >
+                <option value="">-- Selecione um produto da loja para compras --</option>
+                {storeProducts.map((p) => (
+                  <option key={p.id} value={p.id}>{p.title} ({p.price})</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-400 mt-1">Selecione um produto cadastrado na sua loja para preencher o link de checkout e botão de compra automaticamente.</p>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Link de Acesso (URL externa, arquivo PDF ou link de checkout)</label>
               <input 
                 type="text" 
                 value={link} 
